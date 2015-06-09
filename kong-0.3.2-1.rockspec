@@ -101,6 +101,10 @@ build = {
     ["kong.plugins.keyauth.api"] = "kong/plugins/keyauth/api.lua",
     ["kong.plugins.keyauth.daos"] = "kong/plugins/keyauth/daos.lua",
 
+    ["kong.plugins.oauth.handler"] = "kong/plugins/oauth/handler.lua",
+    ["kong.plugins.oauth.access"] = "kong/plugins/oauth/access.lua",
+    ["kong.plugins.oauth.schema"] = "kong/plugins/oauth/schema.lua",
+
     ["kong.plugins.tcplog.handler"] = "kong/plugins/tcplog/handler.lua",
     ["kong.plugins.tcplog.log"] = "kong/plugins/tcplog/log.lua",
     ["kong.plugins.tcplog.schema"] = "kong/plugins/tcplog/schema.lua",
