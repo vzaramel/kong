@@ -1,6 +1,8 @@
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-local BaseDao = require "kong.dao.cassandra.base_dao"
+local IO = require "kong.tools.io"
+local configuration = IO.load_configuration()
+local BaseDao = require("kong.dao."..configuration.database..".base_dao")
 
 local function generate_if_missing(v, t, column)
   if not v or stringy.strip(v) == "" then

@@ -142,4 +142,16 @@ function _M.load_configuration_and_dao(configuration_path)
   return configuration, dao_factory
 end
 
+function _M.load_configuration()
+  local configuration_path = os.getenv("KONG_CONF") or "kong.yml"
+  local configuration_file = _M.read_file(configuration_path)
+  if not configuration_file then
+    error("No configuration file at: "..configuration_path)
+  end
+
+  -- Configuraiton should already be validated by the CLI at this point
+  local configuration = yaml.load(configuration_file)
+  return configuration
+end
+
 return _M
