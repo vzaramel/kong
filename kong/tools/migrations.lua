@@ -1,7 +1,5 @@
 local utils = require "kong.tools.utils"
 local Object = require "classic"
-local IO = require "kong.tools.io"
-local configuration = IO.load_configuration()
 
 local Migrations = Object:extend()
 
@@ -9,7 +7,7 @@ local Migrations = Object:extend()
 -- @param `core_migrations` (Optional) If specified, will use those migrations for core instead of the real ones (for testing).
 -- @param `plugins_namespace` (Optional) If specified, will look for plugins there instead of `kong.plugins` (for testing).
 function Migrations:new(dao, core_migrations, plugins_namespace)
-  dao:load_daos(require("kong.dao."..configuration.database..".migrations"))
+  dao:load_daos(require("kong.dao."..dao.type..".migrations"))
 
   if core_migrations then
     self.core_migrations = core_migrations

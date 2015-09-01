@@ -1,6 +1,4 @@
-local IO = require "kong.tools.io"
-local configuration = IO.load_configuration()
-local BaseDao = require("kong.dao."..configuration.database..".base_dao")
+local BaseDao = require("kong.dao")
 
 local SCHEMA = {
   primary_key = {"id"},
