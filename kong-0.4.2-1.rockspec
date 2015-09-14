@@ -182,6 +182,13 @@ build = {
     ["kong.plugins.ip-restriction.access"] = "kong/plugins/ip-restriction/access.lua",
     ["kong.plugins.ip-restriction.schema"] = "kong/plugins/ip-restriction/schema.lua",
 
+    ["kong.plugins.jwt-auth.migrations.cassandra"] = "kong/plugins/jwt-auth/migrations/cassandra.lua",
+    ["kong.plugins.jwt-auth.handler"] = "kong/plugins/jwt-auth/handler.lua",
+    ["kong.plugins.jwt-auth.access"] = "kong/plugins/jwt-auth/access.lua",
+    ["kong.plugins.jwt-auth.schema"] = "kong/plugins/jwt-auth/schema.lua",
+    ["kong.plugins.jwt-auth.api"] = "kong/plugins/jwt-auth/api.lua",
+    ["kong.plugins.jwt-auth.daos"] = "kong/plugins/jwt-auth/daos.lua",
+
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
     ["kong.api.route_helpers"] = "kong/api/route_helpers.lua",

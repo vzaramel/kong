@@ -6,7 +6,7 @@ local SCHEMA = {
     id = { type = "id", dao_insert_value = true },
     created_at = { type = "timestamp", dao_insert_value = true },
     consumer_id = { type = "id", required = true, queryable = true, foreign = "consumers:id" },
-    secret = { type = "string", required = true, unique = true, queryable = true },
+    secret = { type = "string", required = true, queryable = true },
     secret_is_base64_encoded = { type = "boolean", required = true, default = false }
   }
 }

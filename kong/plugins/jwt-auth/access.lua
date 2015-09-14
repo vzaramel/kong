@@ -3,7 +3,7 @@ local stringy = require "stringy"
 local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
-local jwt = require "luajwt"
+local jwt = require "jwt"
 local basexx = require "basexx"
 
 local CONTENT_TYPE = "content-type"
@@ -153,9 +153,10 @@ function _M.execute(conf)
 
   local username, token = retrieve_credentials(ngx.req, conf)
 
+  -- check for token
   if not username or not token then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
-    return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
+    return responses.send_HTTP_BAD_REQUEST("Invalid authentication credentials")
   end
 
   -- Retrieve consumer
@@ -191,14 +192,13 @@ function _M.execute(conf)
     secret = decode(secret)
   end
 
-  local validate = true -- validate signature, exp and nbf (default: true)
-  local profile, err = jwt.decode(token, secret, validate)
-  if err then
-    return responses.send_HTTP_FORBIDDEN(err)
-  end
+  local verified = jwt.decode(token, {keys = {public = secret}})
 
-  -- what to do with profile
-  credential.profile = profile
+  ngx.log(ngx.DEBUG, "verified" .. require "pl.pretty".write(verified))
+
+  if not verified then
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)

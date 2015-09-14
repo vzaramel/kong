@@ -111,6 +111,7 @@ local retrieve_credentials = {
 }
 
 function _M.execute(conf)
+  ngx.log(ngx.DEBUG, "starting jwt-auth")
   local key, key_found, credential
   for _, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do
     key = retrieve_credentials[v](ngx.req, conf)

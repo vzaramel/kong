@@ -1,10 +1,21 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
-local jwt = require "luajwt"
+local jwt = require "jwt"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_POST_URL = spec_helper.STUB_POST_URL
+local pubkey = [[
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3h3hbKXM40yH18djU0eM
+asMIJ2jEtRn4DzJEcPvRDu+zFUzzNqSUFbD6pYIv/S+C31edIvyfi9kxMdZOKEIm
+AHasLJ6PTBej+ruzIWHNf2Yse7+egXEit5bcKb3J9FOpCDHE+YjM4S9QaQT2hr30
+Y7iIVcNURJn0k2T6HL+AVt0oUbupUdJjS9S5GUSQ0F74t74J9g7X4sOSTjl3RBxB
+mUzfYor3w1HVwP+R0awAzSlNYZdWWJJM6aZXH76nqfv6blKTW0on12b71YWRWKYP
+GxG1KwES6v5+PeLzlJDIDRcI8pl49fJYoXyasF8pskS63o9q8ibQspk+nzL9lD4E
+EQIDAQAB
+-----END PUBLIC KEY-----
+]]
 
 describe("Authentication Plugin", function()
 
@@ -14,18 +25,20 @@ describe("Authentication Plugin", function()
       spec_helper.prepare_db()
       spec_helper.insert_fixtures {
         api = {
-          { name = "tests jwt-auth", public_dns = "jwt-auth.com", target_url = "http://mockbin.com" },
-          { name = "tests jwt-auth 2", public_dns = "jwt-auth2.com", target_url = "http://mockbin.com" }
+          { name = "tests jwt-auth", inbound_dns = "jwtauth.com", upstream_url = "http://mockbin.com" },
+          { name = "tests jwt-auth 2", inbound_dns = "jwtauth2.com", upstream_url = "http://mockbin.com" }
         },
         consumer = {
-          { username = "jwt-auth_tests_consumer" }
+          { username = "jwt-auth_tests_consumer" },
+          { username = "rs256_user" }
         },
-        plugin_configuration = {
-          { name = "jwt-auth", value = { }, __api = 1 },
-          { name = "jwt-auth", value = { id_names = { "username" }, hide_credentials = true }, __api = 2 }
+        plugin = {
+          { name = "jwt-auth", config = { }, __api = 1 },
+          { name = "jwt-auth", config = { id_names = { "username" }, hide_credentials = true }, __api = 2 },
         },
         jwtauth_credential = {
-          { secret = "example_key", __consumer = 1 }
+          { secret = "example_key", __consumer = 1 },
+          { secret = pubkey, __consumer = 2 }
         }
       }
 
@@ -38,37 +51,37 @@ describe("Authentication Plugin", function()
 
 
     it("should return invalid credentials when the credential value is wrong", function()
-      local response, status = http_client.get(STUB_GET_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwt-auth.com", authorization = "asd"})
+      local response, status = http_client.get(STUB_GET_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwtauth.com", authorization = "asd"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
+      assert.are.equal(400, status)
       assert.are.equal("Invalid authentication credentials", body.message)
     end)
 
     it("should return invalid credentials when only passing authorization", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwt-auth.com", authorization = "asd"})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwtauth.com", authorization = "asd"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
+      assert.are.equal(400, status)
       assert.are.equal("Invalid authentication credentials", body.message)
     end)
 
     it("should return invalid credentials when only passing id", function()
-      local response, status = http_client.get(STUB_GET_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwt-auth.com"})
+      local response, status = http_client.get(STUB_GET_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwtauth.com"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
+      assert.are.equal(400, status)
       assert.are.equal("Invalid authentication credentials", body.message)
     end)
 
     it("should return invalid credentials when the credential parameter name is wrong in GET", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwt-auth.com", authorization123 = "Bearer dXNlcm5hbWU6cGFzc3dvcmQ="})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwtauth.com", authorization123 = "Bearer dXNlcm5hbWU6cGFzc3dvcmQ="})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
+      assert.are.equal(400, status)
       assert.are.equal("Invalid authentication credentials", body.message)
     end)
 
     it("should return invalid credentials when the credential parameter name is wrong in POST", function()
-      local response, status = http_client.post(STUB_POST_URL, {}, {host = "jwt-auth.com", authorization123 = "Bearer dXNlcm5hbWU6cGFzc3dvcmQ="})
+      local response, status = http_client.post(STUB_POST_URL, {}, {host = "jwtauth.com", authorization123 = "Bearer dXNlcm5hbWU6cGFzc3dvcmQ="})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
+      assert.are.equal(400, status)
       assert.are.equal("Invalid authentication credentials", body.message)
     end)
 
@@ -81,12 +94,18 @@ describe("Authentication Plugin", function()
           exp = os.time() + 3600,
       }
 
-      local alg = "HS256"
-      local token = jwt.encode(payload, key, alg)
-      local response, status = http_client.get(STUB_GET_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwt-auth.com", authorization = "Bearer " .. token})
+      local token = jwt.encode(claims, {alg = "HS256", keys = {private = key}})
+      local response, status = http_client.get(STUB_GET_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwtauth.com", authorization = "Bearer " .. token})
       assert.are.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.are.equal("Bearer " .. token, parsed_response.headers.authorization)
+    end)
+
+    it("should work with RS256", function()
+      local token = "eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiJhOGZjZTFkZi1iNGFlLTRjNDEtYmFjNi1iNWJiZjI4MGMyOWMiLCJzdWIiOiI3YmZjNThlYy03N2RkLTQ4NzQtYmViZC1iYTg0MTAzMDEyNzkiLCJzY29wZSI6WyJvYXV0aC5hcHByb3ZhbHMiLCJvcGVuaWQiXSwiY2xpZW50X2lkIjoibG9naW4iLCJjaWQiOiJsb2dpbiIsImdyYW50X3R5cGUiOiJwYXNzd29yZCIsInVzZXJfaWQiOiI3YmZjNThlYy03N2RkLTQ4NzQtYmViZC1iYTg0MTAzMDEyNzkiLCJ1c2VyX25hbWUiOiJhZG1pbkBmb3Jpby5jb20iLCJlbWFpbCI6ImFkbWluQGZvcmlvLmNvbSIsImlhdCI6MTM5ODkwNjcyNywiZXhwIjoxMzk4OTQ5OTI3LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojk3NjMvdWFhL29hdXRoL3Rva2VuIiwiYXVkIjpbIm9hdXRoIiwib3BlbmlkIl19.xOa5ZpXksgoaA_XJ3yHMjlLcbSoM6XJy-e60zfyP7bRmu0EKEGZdZrl2iJVh6OTIn8z6UuvcY282C1A5LtRgpir4wqhIrphd-Mi9gfxra0pJvtydd4XqVpuNdW7GDaC43VXpvUtetmfn-YAo2jkD9G22mUuT2sFdt5NqFL7Rk4tVRILes73OWxfQpuoReWvRBik-sJXxC9ADmTuzR36OvomIrso42R8aufU2ku_zPve8IhYLvn3vHmYCt0zNZkX-jSV8YtGodr9V-dKs9na41YvGp2UxkBcV7LKoGSRELSSNJ8JLF-bjO3zYSSbT42-yeHeKfoWAeP6R7S_0c_AYRA"
+
+      local response, status = http_client.get(STUB_GET_URL, {id = "rs256_user"}, {host = "jwtauth.com", authorization = "Bearer " .. token})
+      assert.are.equal(200, status)
     end)
 
     it("should pass with GET with id in headers", function()
@@ -98,9 +117,8 @@ describe("Authentication Plugin", function()
           exp = os.time() + 3600,
       }
 
-      local alg = "HS256"
-      local token = jwt.encode(payload, key, alg)
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwt-auth.com", authorization = "Bearer " .. token, id = "jwt-auth_tests_consumer"})
+      local token = jwt.encode(claims, {alg = "HS256", keys = {private = key}})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwtauth.com", authorization = "Bearer " .. token, id = "jwt-auth_tests_consumer"})
       assert.are.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.are.equal("Bearer " .. token, parsed_response.headers.authorization)
@@ -117,8 +135,8 @@ describe("Authentication Plugin", function()
       }
 
       local alg = "HS256"
-      local token = jwt.encode(payload, key, alg)
-      local response, status = http_client.post(STUB_POST_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwt-auth.com", authorization = "Bearer " .. token})
+      local token = jwt.encode(claims, {alg = "HS256", keys = {private = key}})
+      local response, status = http_client.post(STUB_POST_URL, {id = "jwt-auth_tests_consumer"}, {host = "jwtauth.com", authorization = "Bearer " .. token})
       assert.are.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.are.equal("Bearer " .. token, parsed_response.headers.authorization)
@@ -134,8 +152,8 @@ describe("Authentication Plugin", function()
       }
 
       local alg = "HS256"
-      local token = jwt.encode(payload, key, alg)
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwt-auth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
+      local token = jwt.encode(claims, {alg = "HS256", keys = {private = key}})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwtauth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
       assert.are.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.are.equal(nil, parsed_response.headers.authorization)
@@ -149,15 +167,15 @@ describe("Authentication Plugin", function()
       spec_helper.prepare_db()
       spec_helper.insert_fixtures {
         api = {
-          { name = "tests jwt-auth", public_dns = "jwt-auth.com", target_url = "http://mockbin.com" },
-          { name = "tests jwt-auth 2", public_dns = "jwt-auth2.com", target_url = "http://mockbin.com" }
+          { name = "tests jwt-auth", inbound_dns = "jwtauth.com", upstream_url = "http://mockbin.com" },
+          { name = "tests jwt-auth 2", inbound_dns = "jwtauth2.com", upstream_url = "http://mockbin.com" }
         },
         consumer = {
           { username = "jwt-auth_tests_consumer" }
         },
-        plugin_configuration = {
-          { name = "jwt-auth", value = { }, __api = 1 },
-          { name = "jwt-auth", value = { id_names = { "username" }, hide_credentials = true }, __api = 2 }
+        plugin = {
+          { name = "jwt-auth", config ={ }, __api = 1 },
+          { name = "jwt-auth", config ={ id_names = { "username" }, hide_credentials = true }, __api = 2 }
         },
         jwtauth_credential = {
           { secret = "ZXhhbXBsZV9rZXk=", __consumer = 1, secret_is_base64_encoded = true }
@@ -181,8 +199,8 @@ describe("Authentication Plugin", function()
       }
 
       local alg = "HS256"
-      local token = jwt.encode(payload, key, alg)
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwt-auth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
+      local token = jwt.encode(claims, {alg = "HS256", keys = {private = key}})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwtauth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
       assert.are.equal(200, status)
       assert.are_not.equal(nil, response)
     end)
@@ -197,9 +215,9 @@ describe("Authentication Plugin", function()
       }
 
       local alg = "HS256"
-      local token = jwt.encode(payload, key, alg)
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwt-auth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
-      assert.are.equal(403, status)
+      local token = jwt.encode(claims, {alg = "HS256", keys = {private = key}})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwtauth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
+      assert.are.equal(401, status)
       assert.are_not.equal(nil, response)
     end)
 
@@ -211,15 +229,15 @@ describe("Authentication Plugin", function()
       spec_helper.prepare_db()
       spec_helper.insert_fixtures {
         api = {
-          { name = "tests jwt-auth", public_dns = "jwt-auth.com", target_url = "http://mockbin.com" },
-          { name = "tests jwt-auth 2", public_dns = "jwt-auth2.com", target_url = "http://mockbin.com" }
+          { name = "tests jwt-auth", inbound_dns = "jwtauth.com", upstream_url = "http://mockbin.com" },
+          { name = "tests jwt-auth 2", inbound_dns = "jwtauth2.com", upstream_url = "http://mockbin.com" }
         },
         consumer = {
           { username = "jwt-auth_tests_consumer" }
         },
-        plugin_configuration = {
-          { name = "jwt-auth", value = { }, __api = 1 },
-          { name = "jwt-auth", value = { id_names = { "username" }, hide_credentials = true }, __api = 2 }
+        plugin = {
+          { name = "jwt-auth", config ={ }, __api = 1 },
+          { name = "jwt-auth", config ={ id_names = { "username" }, hide_credentials = true }, __api = 2 }
         },
         jwtauth_credential = {
           { secret = "example_key", __consumer = 1, secret_is_base64_encoded = true }
@@ -244,8 +262,8 @@ describe("Authentication Plugin", function()
 
       local alg = "HS256"
       local token = jwt.encode(payload, key, alg)
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwt-auth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
-      assert.are.equal(403, status)
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "jwtauth2.com", authorization = "Bearer " .. token, username = "jwt-auth_tests_consumer"})
+      assert.are.equal(401, status)
       assert.are_not.equal(nil, response)
     end)
 
