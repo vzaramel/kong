@@ -6,8 +6,9 @@ local Migrations = {
     up = function(options)
       -- TODO: can we create the database as well if we can?
       return [[
+        CREATE DATABASE IF NOT EXISTS kong
         CREATE TABLE IF NOT EXISTS schema_migrations(
-          id text PRIMARY KEY,
+          id varchar(250) PRIMARY KEY,
           migrations varchar(100)[]
         );
       ]]
@@ -15,6 +16,7 @@ local Migrations = {
     down = function(options)
       return [[
         drop table schema_migrations;
+        DROP DATABASE kong
       ]]
     end
   },

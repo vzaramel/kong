@@ -71,6 +71,7 @@ function Migrations:run_migrations(migrations, identifier, callback)
     return err
   end
 
+  
   -- Determine which migrations have already been run
   -- and which ones need to be run.
   local diff_migrations = {}

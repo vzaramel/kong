@@ -4,7 +4,7 @@
 local query_builder = require "kong.dao.mysql.query_builder"
 local validations = require "kong.dao.schemas_validation"
 local constants = require "kong.constants"
-local mysql = require "mysql"
+local mysql = require "luasql.mysql"
 local timestamp = require "kong.tools.timestamp"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
@@ -21,7 +21,7 @@ local BaseDao = Object:extend()
 uuid.seed()
 
 local function session_uniq_addr(session)
-  return session.host..":"..session.port
+  return self._properties.hosts..":"..self._properties.port
 end
 
 function BaseDao:new(properties)
@@ -65,31 +65,16 @@ end
 -- @return `error`   Error if any
 function BaseDao:_open_session(keyspace)
   local ok, err
-
+  -- print(mysql_constants)
   -- Start mysql session
-  local session = mysql:new()
-  session:set_timeout(self._properties.timeout)
+  local env  = mysql.mysql()
+  conn, err = env:connect(self._properties.keyspace, self._properties.username, self._properties.password, self._properties.hosts, self._properties.port )
 
-  local options = self._factory:get_session_options()
-
-  ok, err = session:connect(self._properties.hosts or self._properties.contact_points, nil, options)
-  if not ok then
+  if not conn then
     return nil, DaoError(err, error_types.DATABASE)
   end
 
-  local times, err = session:get_reused_times()
-  if err and err.message ~= "luasocket does not support reusable sockets" then
-    return nil, DaoError(err, error_types.DATABASE)
-  end
-
-  if times == 0 or not times then
-    ok, err = session:set_keyspace(keyspace ~= nil and keyspace or self._properties.keyspace)
-    if not ok then
-      return nil, DaoError(err, error_types.DATABASE)
-    end
-  end
-
-  return session
+  return conn
 end
 
 -- Close the given opened session.
@@ -144,32 +129,6 @@ local function encode_mysql_args(schema, t, args_keys)
   return args_to_bind, errors
 end
 
--- Get a statement from the cache or prepare it (and thus insert it in the cache).
--- The cache key will be the plain string query representation.
--- @param  `query`     The query to prepare
--- @return `statement` The prepared mysql statement
--- @return `cache_key` The cache key used to store it into the cache
--- @return `error`     Error if any during the query preparation
-function BaseDao:get_or_prepare_stmt(session, query)
-  if type(query) ~= "string" then
-    -- Cannot be prepared (probably a BatchStatement)
-    return query
-  end
-
-  local statement, err
-  -- Retrieve the prepared statement from cache or prepare and cache
-  if self._statements_cache[session_uniq_addr(session)] and self._statements_cache[session_uniq_addr(session)][query] then
-    statement = self._statements_cache[session_uniq_addr(session)][query]
-  else
-    statement, err = self:prepare_stmt(session, query)
-    if err then
-      return nil, query, err
-    end
-  end
-
-  return statement, query
-end
-
 -- Execute a query, trying to prepare them on a per-host basis.
 -- Opens a socket, execute the statement, puts the socket back into the
 -- socket pool and returns a parsed result.
@@ -180,69 +139,31 @@ end
 -- @return `results`  If results set are ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results have a paging_state.
 -- @return `error`    An error if any during the whole execution (sockets/query execution)
 function BaseDao:_execute(query, args, options, keyspace)
-  local session, err = self:_open_session(keyspace)
+  local conn, err = self:_open_session(keyspace)
   if err then
     return nil, err
   end
-
-  -- Prepare query and cache the prepared statement for later call
-  local statement, cache_key, err = self:get_or_prepare_stmt(session, query)
-  if err then
-    if options and options.auto_paging then
-      -- Allow the iteration to run once and thus catch the error
-      return function() return {}, err end
+  print(query)
+  local curr = conn:execute(query)
+  local results = {}
+  local cols = curr:getcolnames()
+  local numCols = table.getn(cols)
+  local rowNum = 1
+  if curr and type(curr) == 'userdata' then
+    row = curr:fetch()
+    while row do
+      for i = 1, numCols do
+        results[rowNum] = {}
+        results[rowNum][cols[i]] = row[i]
+      end
+      rowNum = rowNum + 1
+      row = curr:fetch()
     end
-    return nil, err
   end
+-- close everything
+  curr:close() -- already closed because all the result set was consumed
 
-  if options and options.auto_paging then
-    local _, rows, err, page = session:execute(statement, args, options)
-    for i, row in ipairs(rows) do
-      rows[i] = self:_unmarshall(row)
-    end
-    return _, rows, err, page
-  end
-
-  local results, err = session:execute(statement, args, options)
-
-  -- First, close the socket
-  local socket_err = self:_close_session(session)
-  if socket_err then
-    return nil, socket_err
-  end
-
-  -- Handle unprepared queries
-  if err and err.mysql_err_code == mysql_constants.error_codes.UNPREPARED then
-    ngx.log(ngx.NOTICE, "mysql did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..err..")")
-    -- If the statement was declared unprepared, clear it from the cache, and try again.
-    self._statements_cache[session_uniq_addr(session)][cache_key] = nil
-    return self:_execute(query, args, options)
-  elseif err then
-    err = DaoError(err, error_types.DATABASE)
-  end
-
-  -- Parse result
-  if results and results.type == "ROWS" then
-    -- do we have more pages to fetch? if so, alias the paging_state
-    if results.meta.has_more_pages then
-      results.next_page = results.meta.paging_state
-    end
-
-    -- only the DAO needs those, it should be transparant in the application
-    results.meta = nil
-    results.type = nil
-
-    for i, row in ipairs(results) do
-      results[i] = self:_unmarshall(row)
-    end
-
-    return results, err
-  elseif results and results.type == "VOID" then
-    -- result is not a set of rows, let's return a boolean to indicate success
-    return err == nil, err
-  else
-    return results, err
-  end
+  return results
 end
 
 -- Bind a table of arguments to a query depending on the entity's schema,

@@ -5,7 +5,7 @@
 -- database and dropping it.
 
 local constants = require "kong.constants"
-local mysql = require "mysql"
+local mysql = require "luasql.mysql"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
 local Object = require "classic"

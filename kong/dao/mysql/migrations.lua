@@ -1,26 +1,26 @@
-local cassandra = require "cassandra"
+local mysql = require "luasql.mysql"
 local stringy = require "stringy"
-local BaseDao = require "kong.dao.cassandra.base_dao"
+local BaseDao = require "kong.dao.mysql.base_dao"
 
 local Migrations = BaseDao:extend()
 
 function Migrations:new(properties)
   self._table = "schema_migrations"
   self.queries = {
-    get_keyspace = [[
-      SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?;
-    ]],
     add_migration = [[
-      UPDATE schema_migrations SET migrations = migrations + ? WHERE id = ?;
+      UPDATE schema_migrations SET migrations = array_append(migrations, '%s') where id = '%s'
     ]],
     get_all_migrations = [[
       SELECT * FROM schema_migrations;
     ]],
-    get_migrations = [[
-      SELECT migrations FROM schema_migrations WHERE id = ?;
-    ]],
-    delete_migration = [[
-      UPDATE schema_migrations SET migrations = migrations - ? WHERE id = ?;
+    insert_migrations = "INSERT INTO schema_migrations (id,migrations) VALUES ('%s', '{}')",
+    get_all_migrations = "SELECT id,migrations FROM schema_migrations",
+    get_migrations = "SELECT id,migrations FROM schema_migrations where id = '%s'",
+    delete_migration = "UPDATE schema_migrations SET migrations = array_remove(migrations, '%s') WHERE id = '%s'",
+    get_migrations_table = "SELECT table_name FROM information_schema.tables WHERE table_name ='schema_migrations';",
+    reset_all_tables = [[
+      drop schema public cascade;
+      create schema public;
     ]]
   }
 
@@ -28,15 +28,12 @@ function Migrations:new(properties)
 end
 
 function Migrations:keyspace_exists(keyspace)
-  local rows, err = Migrations.super._execute(self,
-    self.queries.get_keyspace,
-    {self._properties.keyspace},
-    nil, "system"
-  )
-  if err then
-    return nil, err
+  local rows = Migrations.super._execute(self, self.queries.get_migrations_table)
+
+  if not rows then
+    return nil, "Error getting table"
   else
-    return #rows > 0
+    return rows[1]["table_name"] == "schema_migrations"
   end
 end
 
@@ -47,8 +44,8 @@ end
 function Migrations:add_migration(migration_name, identifier)
   return Migrations.super._execute(self,
     self.queries.add_migration,
-    {cassandra.list({migration_name}), identifier},
-    {consistency_level = cassandra.constants.consistency.ALL}
+    {mysql.list({migration_name}), identifier},
+    {consistency_level = mysql.constants.consistency.ALL}
   )
 end
 
@@ -70,13 +67,13 @@ function Migrations:get_migrations(identifier)
     rows, err = Migrations.super._execute(self,
       self.queries.get_migrations,
       {identifier},
-      {consistency_level = cassandra.constants.consistency.ALL}
+      {consistency_level = mysql.constants.consistency.ALL}
     )
   else
     rows, err = Migrations.super._execute(self,
       self.queries.get_all_migrations,
       nil,
-      {consistency_level = cassandra.constants.consistency.ALL}
+      {consistency_level = mysql.constants.consistency.ALL}
     )
   end
 
@@ -95,8 +92,8 @@ end
 function Migrations:delete_migration(migration_name, identifier)
   return Migrations.super._execute(self,
     self.queries.delete_migration,
-    {cassandra.list({migration_name}), identifier},
-    {consistency_level = cassandra.constants.consistency.ALL}
+    {mysql.list({migration_name}), identifier},
+    {consistency_level = mysql.constants.consistency.ALL}
   )
 end
 

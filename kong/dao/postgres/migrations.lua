@@ -15,7 +15,7 @@ function Migrations:new(properties)
     get_all_migrations = "SELECT id,migrations FROM schema_migrations",
     get_migrations = "SELECT id,migrations FROM schema_migrations where id = '%s'",
     delete_migration = "UPDATE schema_migrations SET migrations = array_remove(migrations, '%s') WHERE id = '%s'",
-    get_migrations_table = "SELECT to_regclass('public.schema_migrations')",
+    get_migrations_table = "SELECT * FROM schema_migrations.tables",
     reset_all_tables = [[
       drop schema public cascade;
       create schema public;
@@ -28,7 +28,7 @@ end
 function Migrations:keyspace_exists(keyspace)
 
   local rows = Migrations.super._execute(self, self.queries.get_migrations_table)
-
+  print(rows)
   if not rows then
     return nil, "Error getting table"
   else
