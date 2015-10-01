@@ -8,7 +8,7 @@ function Migrations:new(properties)
   self._table = "schema_migrations"
   self.queries = {
     add_migration = [[
-      UPDATE schema_migrations SET migrations = array_append(migrations, '%s') where id = '%s'
+      UPDATE schema_migrations SET migrations = CONCAT(migrations, '%s') where id = '%s'
     ]],
     get_all_migrations = [[
       SELECT * FROM schema_migrations;
@@ -42,11 +42,15 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:add_migration(migration_name, identifier)
+  local rows
+  rows = Migrations.super._execute(self, string.format(self.queries.get_migrations, identifier))
+  -- print(rows)
+  if #rows == 0 then
+    Migrations.super._execute(self, string.format(self.queries.insert_migrations, identifier))
+  end
+
   return Migrations.super._execute(self,
-    self.queries.add_migration,
-    {mysql.list({migration_name}), identifier},
-    {consistency_level = mysql.constants.consistency.ALL}
-  )
+    string.format(self.queries.add_migration, migration_name, identifier))
 end
 
 -- Return all logged migrations with a filter by identifier optionally. Check if keyspace exists before to avoid error during the first migration.
@@ -62,25 +66,16 @@ function Migrations:get_migrations(identifier)
     return nil
   end
 
-  local rows, err
+  local rows
+
   if identifier ~= nil then
-    rows, err = Migrations.super._execute(self,
-      self.queries.get_migrations,
-      {identifier},
-      {consistency_level = mysql.constants.consistency.ALL}
-    )
+    rows = Migrations.super._execute(self, string.format(self.queries.get_migrations, identifier))
   else
-    rows, err = Migrations.super._execute(self,
-      self.queries.get_all_migrations,
-      nil,
-      {consistency_level = mysql.constants.consistency.ALL}
-    )
+    rows = Migrations.super._execute(self, self.queries.get_all_migrations)
   end
 
-  if err and stringy.find(err.message, "unconfigured columnfamily schema_migrations") ~= nil then
-    return nil, "Missing mandatory column family \"schema_migrations\" in configured keyspace. Please consider running \"kong migrations reset\" to fix this."
-  elseif err then
-    return nil, err
+  if not rows then
+    return nil, "Error getting migrations"
   elseif rows and #rows > 0 then
     return identifier == nil and rows or rows[1].migrations
   end

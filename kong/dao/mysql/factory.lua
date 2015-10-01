@@ -117,37 +117,58 @@ end
 -- @param {boolean} no_keyspace Won't set the keyspace if true
 -- @return {string} error if any
 function mysqlFactory:execute_queries(queries, no_keyspace)
+
   local ok, err
-  local session = mysql:new()
-  session:set_timeout(self._properties.timeout)
+  -- print(mysql_constants)
+  -- Start mysql session
+  local env  = mysql.mysql()
+  conn, err = env:connect(self._properties.keyspace, self._properties.username, self._properties.password, self._properties.hosts, self._properties.port )
 
-  local options = self:get_session_options()
-
-  ok, err = session:connect(self._properties.hosts or self._properties.contact_points, nil, options)
-  if not ok then
-    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  if not conn then
+    return nil, DaoError(err, error_types.DATABASE)
   end
 
-  if no_keyspace == nil then
-    ok, err = session:set_keyspace(self._properties.keyspace)
-    if not ok then
-      return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
-    end
-  end
-
-  -- mysql only supports BATCH on DML statements.
-  -- We must split commands to execute them individually for migrations and such
+  print(queries)
   queries = stringy.split(queries, ";")
   for _, query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
-      local _, stmt_err = session:execute(query, nil, {consistency_level = mysql.constants.consistency.ALL})
-      if stmt_err then
+      local curr, err = conn:execute(query)
+      if err then
         return DaoError(stmt_err, constants.DATABASE_ERROR_TYPES.DATABASE)
+      end
+      print(query)
+      local results = {}
+      print(curr)
+      print(type(curr))
+      if curr and type(curr) == 'userdata' then
+        local row = {}
+        local rowNum = 1
+        local cols = curr:getcolnames()
+        local numCols = table.getn(cols)
+        curr:fetch(row)
+        print(type(row))
+        -- print(row)
+        if type(row) == 'table' then
+          while row do
+            for i = 1, numCols do
+              results[rowNum] = {}
+              results[rowNum][cols[i]] = row[i]
+            end
+            rowNum = rowNum + 1
+            row = curr:fetch()
+          end
+        end
+      else 
+        if type(curr) == 'number' then
+          results = curr
+        end
       end
     end
   end
 
-  session:close()
+  conn:close()
+  env:close()
+  return results
 end
 
 return mysqlFactory

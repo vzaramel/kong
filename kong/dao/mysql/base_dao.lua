@@ -146,23 +146,34 @@ function BaseDao:_execute(query, args, options, keyspace)
   print(query)
   local curr = conn:execute(query)
   local results = {}
-  local cols = curr:getcolnames()
-  local numCols = table.getn(cols)
-  local rowNum = 1
+
+  print(curr)
+  print(type(curr))
+  
   if curr and type(curr) == 'userdata' then
-    row = curr:fetch()
-    while row do
-      for i = 1, numCols do
-        results[rowNum] = {}
-        results[rowNum][cols[i]] = row[i]
+    local rowNum = 1
+    local cols = curr:getcolnames()
+    local numCols = table.getn(cols)
+    local row = {}
+    curr:fetch(row)
+    print(type(row))
+    -- print(row)
+    if type(row) == 'table' then
+      while row do
+        for i = 1, numCols do
+          results[rowNum] = {}
+          results[rowNum][cols[i]] = row[i]
+        end
+        rowNum = rowNum + 1
+        row = curr:fetch()
       end
-      rowNum = rowNum + 1
-      row = curr:fetch()
+    end
+  else
+    if type(curr) == 'number' then
+        results = curr
     end
   end
--- close everything
-  curr:close() -- already closed because all the result set was consumed
-
+  
   return results
 end
 

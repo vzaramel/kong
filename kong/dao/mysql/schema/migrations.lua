@@ -6,10 +6,10 @@ local Migrations = {
     up = function(options)
       -- TODO: can we create the database as well if we can?
       return [[
-        CREATE DATABASE IF NOT EXISTS kong
+        CREATE DATABASE IF NOT EXISTS kong_development;
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id varchar(250) PRIMARY KEY,
-          migrations varchar(100)[]
+          migrations text
         );
       ]]
     end,
