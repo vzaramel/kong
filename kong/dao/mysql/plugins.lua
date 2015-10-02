@@ -52,7 +52,6 @@ function Plugins:find_distinct()
   end
 
   local select_q = query_builder.select(self._table)
-
   -- Execute query
   local distinct_names = {}
   for rows, err in Plugins.super.execute(self, select_q) do
