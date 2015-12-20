@@ -1,19 +1,43 @@
 ## [Unreleased][unreleased]
 
+### Breaking changes
+
+- Drop the Lua 5.1 dependency which was only used for Kong's CLI. The CLI now runs against LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Mashape/kong/pull/799)
+
 ### Added
 
-- Added a `total` field in API responses, that counts the total number of entities in the table. [#635](https://github.com/Mashape/kong/pull/635)
-- You can now specify a custom DNS resolver address that Kong will use when resolving hostnames. [#625](https://github.com/Mashape/kong/pull/635)
+- A new `total` field in API responses, that counts the total number of entities in the response body. [#635](https://github.com/Mashape/kong/pull/635)
+- Dnsmasq is now optional. You can specify a custom DNS resolver address that Kong will use when resolving hostnames. This can be configured in `kong.yml`. [#625](https://github.com/Mashape/kong/pull/635)
 
 ### Changed
 
-- Removed the `dnsmasq_port` property, and introduced `dns_resolver` that also allows to specify a custom DNS server. [#625](https://github.com/Mashape/kong/pull/635)
+- Disable access logs for `/status` endpoint.
 - The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` field. [#635](https://github.com/Mashape/kong/pull/635)
-- Disabled access logs for `/status` endpoint
 
 ### Fixed
 
-- In the API, the `next` link is not being displayed anymore if there are no more entities to return. [#635](https://github.com/Mashape/kong/pull/635)
+- In the Admin API responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
+
+## [0.5.4] - 2015/12/03
+
+### Fixed
+
+- Mashape Analytics plugin (aka Galileo):
+  - Improve stability under heavy load. [#757](https://github.com/Mashape/kong/issues/757)
+  - base64 encode ALF request/response bodies, enabling proper support for Galileo bodies inspection capabilities. [#747](https://github.com/Mashape/kong/pull/747)
+  - Do not include JSON bodies in ALF `postData.params` field. [#766](https://github.com/Mashape/kong/pull/766)
+
+## [0.5.3] - 2015/11/16
+
+### Fixed
+
+- Avoids additional URL encoding when proxying to an upstream service. [#691](https://github.com/Mashape/kong/pull/691)
+- Potential timing comparison bug in HMAC plugin. [#704](https://github.com/Mashape/kong/pull/704)
+- A missing "env" statement in the Nginx configuration. [#706](https://github.com/Mashape/kong/pull/706)
+
+### Added
+
+- The Galileo plugin now supports arbitrary host, port and path values. [#721](https://github.com/Mashape/kong/pull/721)
 
 ## [0.5.2] - 2015/10/21
 
@@ -67,7 +91,6 @@ Several breaking changes are introduced. You will have to slightly change your c
   - `strip_path` -> `strip_request_path`
   - `target_url` -> `upstream_url`
 - `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Mashape/kong/issues/513)
->>>>>>> dbocs(changelog) 0.5.0 changes
 - The database schema has been updated to handle the separation of plugins outside of the core repository.
 - The Key authentication and Basic authentication plugins routes have changed:
 
@@ -361,7 +384,9 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.5.2...next
+[unreleased]: https://github.com/mashape/kong/compare/0.5.4...next
+[0.5.4]: https://github.com/mashape/kong/compare/0.5.3...0.5.4
+[0.5.3]: https://github.com/mashape/kong/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/mashape/kong/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/mashape/kong/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/mashape/kong/compare/0.4.2...0.5.0

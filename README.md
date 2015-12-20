@@ -1,14 +1,14 @@
 # Microservice & API Management Layer
 [![][kong-logo]][kong-url]
 
-Kong [was created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) at [Mashape](https://www.mashape.com) to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
+Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage and extend over [15,000 APIs](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices), while handling billions of requests per month. Kong is backed by the battle-tested **NGINX** with a focus on scalability, high performance & reliability.
 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
 [Installation](http://getkong.org/install) |
-[Mailing List][google-groups-url]
-
-[![Gitter Badge][gitter-badge]][gitter-url]
+[Mailing List][google-groups-url] |
+[Gitter Chat][gitter-url] |
+freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 
 ## Summary
 
@@ -26,6 +26,7 @@ Kong [was created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-
 
 - **CLI**: Control your Kong cluster from the command line just like Neo in The Matrix.
 - **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
+- **Geo-Replicated**: Configs are always up-to-date across different regions.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
@@ -36,7 +37,7 @@ Kong [was created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-
   - **ACL**: Acccess Control for your API Consumers.
   - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
   - **Response-Rate-Limiting**: Rate limiting based on custom response header value.
-  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Mashape Analytics](https://apianalytics.com) (Galileo).
+  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
   - **SSL**: Setup a specific SSL certificate for an underlying service or API.
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
@@ -83,6 +84,8 @@ Resources:
 - [Kong intro in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [Kong tutorial in Japanese 1](http://dev.classmethod.jp/etc/kong-api-aggregator/)
 - [Kong tutorial in Japanese 2](http://www.ryuzee.com/contents/blog/7048)
+- [HAProxy + Kong](http://47ron.in/blog/2015/10/23/haproxy-in-the-era-of-microservices.html)
+- [Learn Lua in 15 minutes](http://tylerneylon.com/a/learn-lua/)
 
 Videos:
 
@@ -90,9 +93,15 @@ Videos:
 - [VIDEO - OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
 - [VIDEO - Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
 
+Podcasts:
+- [Changelog #185](https://changelog.com/185)
+
 Tools:
 
+- [Kong Dashboard](https://github.com/PGBI/kong-dashboard)
 - [Kongfig](https://github.com/mybuilder/kongfig)
+- [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
+- [Konga CLI Tool](https://github.com/Floby/konga-cli)
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
 - [Kong GUI in JS](https://github.com/rsdevigo/jungle)
 - [Kong GUI in Py](https://github.com/vikingco/django-kong-admin)
@@ -100,6 +109,8 @@ Tools:
 - [Chef Cookbook for Kong](https://github.com/zuazo/kong-cookbook)
 - [Python Client for Kong](https://pypi.python.org/pypi/python-kong/)
 - [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
+- [.NET Client for Kong](https://www.nuget.org/packages/Kong/0.0.4)
+
 
 ## Roadmap
 
@@ -107,7 +118,9 @@ You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape
 
 ## Development
 
-If you are planning on developing on Kong (writing your own plugin or contribute to the core), you'll need a development installation. The `next` branch holds the latest unreleased source code.
+If you are planning on developing on Kong, you'll need a development installation. The `next` branch holds the latest unreleased source code.
+
+You can read more about writing your own plugins in the [Plugin Development Guide](https://getkong.org/docs/latest/plugin-development/), or browse an online version of Kong's source code documentation in the [Public Lua API Reference](https://getkong.org/docs/0.5.x/lua-reference/).
 
 #### Vagrant
 

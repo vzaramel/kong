@@ -81,10 +81,24 @@ local function create_hash(request, hmac_params, headers)
   return ngx_sha1(hmac_params.secret, signing_string)
 end
 
+local function is_digest_equal(digest_1, digest_2)
+  if #digest_1 ~= #digest_1 then
+    return false
+  end
+      
+  local result = true
+  for i=1, #digest_1 do
+    if digest_1:sub(i, i) ~= digest_2:sub(i, i) then
+      result = false
+    end  
+  end    
+  return result
+end    
+
 local function validate_signature(request, hmac_params, headers)
   local digest = create_hash(request, hmac_params, headers)
   if digest then
-    return digest == ngx_decode_base64(hmac_params.signature)
+   return is_digest_equal(digest, ngx_decode_base64(hmac_params.signature))
   end
 end
 
@@ -131,7 +145,6 @@ function _M.execute(conf)
   local headers = ngx_set_headers();
   -- If both headers are missing, return 401
   if not (headers[AUTHORIZATION] or headers[PROXY_AUTHORIZATION]) then
-    ngx.ctx.stop_phases = true
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
@@ -157,7 +170,6 @@ function _M.execute(conf)
   end
   hmac_params.secret = credential.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("HMAC signature does not match")
   end
 

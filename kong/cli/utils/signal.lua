@@ -150,7 +150,7 @@ end
 local function prepare_database(args_config)
   local kong_config = get_kong_config(args_config)
   local dao_factory = dao.load(kong_config)
-  local migrations = require("kong.tools.migrations")(dao_factory)
+  local migrations = require("kong.tools.migrations")(dao_factory, kong_config)
 
   local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
   if err then
@@ -159,11 +159,24 @@ local function prepare_database(args_config)
     cutils.logger:info("Database not initialized. Running migrations...")
   end
 
-  local err = migrations:migrate_all(kong_config, function(identifier, migration)
-    if migration then
-      cutils.logger:success(string.format("%s migrated up to: %s", identifier, cutils.colors.yellow(migration.name)))
-    end
-  end)
+  local function before(identifier)
+    cutils.logger:info(string.format(
+      "Migrating %s on keyspace \"%s\" (%s)",
+      cutils.colors.yellow(identifier),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
+      dao_factory.type
+    ))
+  end
+
+  local function on_each_success(identifier, migration)
+    cutils.logger:info(string.format(
+      "%s migrated up to: %s",
+      identifier,
+      cutils.colors.yellow(migration.name)
+    ))
+  end
+
+  local err = migrations:run_all_migrations(before, on_each_success)
   if err then
     cutils.logger:error_exit(err)
   end
@@ -214,9 +227,25 @@ function _M.prepare_kong(args_config, signal)
   prepare_nginx_working_dir(args_config, signal)
 end
 
-local function check_port(port)
-  if cutils.is_port_open(port) then
-    cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")
+-- Checks whether a port is available. Exits the application if not available.
+-- @param port The port to check
+-- @param name Functional name the port is used for (display name)
+-- @param timeout (optional) Timeout in seconds after which a failure is logged
+-- and application exit is performed, if not provided then it will fail at once without retries.
+local function check_port(port, name, timeout)
+  local expire = socket.gettime() + (timeout or 0)
+  local msg = tostring(port) .. (name and " ("..tostring(name)..")")
+  local warned
+  while not cutils.is_port_bindable(port) do
+    if expire <= socket.gettime() then
+      cutils.logger:error_exit("Port "..msg.." is being blocked by another process.")
+    else
+      if not warned then
+        cutils.logger:warn("Port "..msg.." is unavailable, retrying for "..tostring(timeout).." seconds")
+        warned = true
+      end
+    end
+    socket.sleep(0.5)
   end
 end
 
@@ -228,6 +257,7 @@ end
 -- @return A boolean: true for success, false otherwise
 function _M.send_signal(args_config, signal)
   -- Make sure nginx is there and is openresty
+  local port_timeout = 1   -- OPT: make timeout configurable (note: this is a blocking timeout!)
   local nginx_path = find_nginx()
   if not nginx_path then
     cutils.logger:error_exit(string.format("Kong cannot find an 'nginx' executable.\nMake sure it is in your $PATH or in one of the following directories:\n%s", table.concat(NGINX_SEARCH_PATHS, "\n")))
@@ -237,9 +267,13 @@ function _M.send_signal(args_config, signal)
   if not signal then signal = START end
 
   if signal == START then
-    local ports = { kong_config.proxy_port, kong_config.proxy_ssl_port, kong_config.admin_api_port }
-    for _,port in ipairs(ports) do
-      check_port(port)
+    local ports = {
+      ["Kong proxy"] = kong_config.proxy_port,
+      ["Kong proxy ssl"] = kong_config.proxy_ssl_port,
+      ["Kong admin api"] = kong_config.admin_api_port
+    }
+    for name, port in pairs(ports) do
+      check_port(port, name, port_timeout)
     end
   end
 
@@ -257,7 +291,7 @@ function _M.send_signal(args_config, signal)
     dnsmasq.stop(kong_config)
     if kong_config.dns_resolver.dnsmasq then
       local dnsmasq_port = kong_config.dns_resolver.port
-      check_port(dnsmasq_port)
+      check_port(dnsmasq_port, "dnsmasq", port_timeout)
       dnsmasq.start(kong_config.nginx_working_dir, dnsmasq_port)
     end
   elseif signal == STOP or signal == QUIT then
@@ -268,7 +302,7 @@ function _M.send_signal(args_config, signal)
   if signal == START or signal == RESTART or signal == RELOAD then
     local res, code = IO.os_execute("ulimit -n")
     if code == 0 and tonumber(res) < 4096 then
-      cutils.logger:warn("ulimit is currently set to \""..res.."\". For better performance set it to at least \"4096\" using \"ulimit -n\"")
+      cutils.logger:warn('ulimit is currently set to "'..res..'". For better performance set it to at least "4096" using "ulimit -n"')
     end
   end
 
