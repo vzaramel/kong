@@ -1,4 +1,4 @@
-local BaseDao = require "kong.dao".BaseDao
+local BaseDao = require "kong.tools.dao_loader".BaseDao
 
 local SCHEMA = {
   primary_key = {"id"},

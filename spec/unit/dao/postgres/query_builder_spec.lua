@@ -30,7 +30,7 @@ describe("Query Builder", function()
 
       it("should return a select statement with more than one statement in the where query", function()
         local q, _ = builder.select("apis", {id="1", name="mockbin"})
-        assert.equal("SELECT * FROM \"apis\" WHERE \"id\" = '1' AND \"name\" = 'mockbin'", q)
+        assert.equal("SELECT * FROM \"apis\" WHERE \"name\" = 'mockbin' AND \"id\" = '1'", q)
       end)
 
     end)
@@ -59,7 +59,7 @@ describe("Query Builder", function()
 
     it("should build an INSERT query", function()
       local q = builder.insert("apis", {id="123", name="mockbin"})
-      assert.equal("INSERT INTO \"apis\"(\"id\", \"name\") VALUES('123', 'mockbin')", q)
+      assert.equal("INSERT INTO \"apis\"(\"name\", \"id\") VALUES('mockbin', '123')", q)
     end)
 
     it("should throw an error if no table_name", function()

@@ -1,5 +1,5 @@
 local cassandra = require "cassandra"
-local BaseDao = require "kong.dao".BaseDao
+local BaseDao = require "kong.tools.dao_loader".BaseDao
 local timestamp = require "kong.tools.timestamp"
 
 local ngx_log = ngx and ngx.log or print

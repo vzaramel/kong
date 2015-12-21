@@ -32,7 +32,7 @@ dependencies = {
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1",
-  "pgmoon ~> 1.2.0-1"
+  "pgmoon ~> 1.2.0-1",
   "luasyslog >= 1.0.0-2"
 }
 build = {
@@ -239,7 +239,7 @@ build = {
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
 
-    ["kong.plugins.hmac-auth.schema.migrations"] = "kong/plugins/hmac-auth/schema/migrations.lua",
+    ["kong.plugins.hmac-auth.migrations.cassandra"] = "kong/plugins/hmac-auth/migrations/cassandra.lua",
     ["kong.plugins.hmac-auth.handler"] = "kong/plugins/hmac-auth/handler.lua",
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
     ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",

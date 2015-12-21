@@ -50,29 +50,29 @@
 ## Port on which the admin API will listen to. The admin API is a private API which lets you
 ## manage your Kong infrastructure. It needs to be secured appropriatly.
 # admin_api_port: 8001
-
+yaml:
 ######
 ## Specify which database to use from the databases_available property.
-# database: cassandra
+  database: cassandra
 
 ######
 ## Databases configuration.
-# databases_available:
-  # postgres:
-    # hosts: "192.168.99.100"
-    # port: "5432"
-    # keyspace: kong
-    # username: "postgres"
-    # password: "mysecretpassword"
-  # cassandra:
-    ######
-    ## Contact points to your Cassandra cluster.
-    # contact_points:
-    #   - "localhost:9042"
+  databases_available:
+    postgres:
+      hosts: "192.168.99.100"
+      port: "5432"
+      keyspace: kong
+      username: "postgres"
+      password: "mysecretpassword"
+    cassandra:
+      #####
+      # Contact points to your Cassandra cluster.
+      contact_points:
+        - "localhost:9042"
 
-    ######
-    ## Name of the keyspace used by Kong. Will be created if it does not exist.
-    # keyspace: kong
+      ######
+      ## Name of the keyspace used by Kong. Will be created if it does not exist.
+      keyspace: kong
 
     ######
     ## Keyspace options. Set those before running Kong or any migration.
@@ -108,8 +108,8 @@
     ######
     ## Cluster authentication options. Provide a user and a password here if your cluster uses the
     ## PasswordAuthenticator scheme.
-    # user: cassandra
-    # password: cassandra
+    user: cassandra
+    password: cassandra
 
 ######
 ## Time (in seconds) for which entities from the database (APIs, plugins configurations...)

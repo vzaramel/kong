@@ -33,6 +33,7 @@ local DEFAULT_ENV_VALUES = {
       ["proxy_ssl_port"] = 8543,
       ["admin_api_port"] = 8101,
       ["dnsmasq_port"] = 8153,
+      ["database"] = "cassandra",
       ["databases_available"] = {
         ["cassandra"] = {
           ["keyspace"] = "kong_tests"
@@ -47,6 +48,7 @@ local DEFAULT_ENV_VALUES = {
   },
   DEVELOPMENT = {
     yaml = {
+      ["database"] = "cassandra",
       ["databases_available"] = {
         ["cassandra"] = {
           ["keyspace"] = "kong_development"

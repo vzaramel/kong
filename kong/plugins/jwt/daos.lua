@@ -1,4 +1,4 @@
-local BaseDao = require "kong.dao".BaseDao
+local BaseDao = require "kong.tools.dao_loader".BaseDao
 local utils = require "kong.tools.utils"
 
 local SCHEMA = {
@@ -11,7 +11,6 @@ local SCHEMA = {
     secret = {type = "string", unique = true, default = utils.random_string}
   }
 }
-
 local Jwt = BaseDao:extend()
 
 function Jwt:new(properties)

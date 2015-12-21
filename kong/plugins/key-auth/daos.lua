@@ -1,6 +1,8 @@
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-local BaseDao = require "kong.dao".BaseDao
+local BaseDao = require "kong.tools.dao_loader".BaseDao
+
+
 
 local function generate_if_missing(v, t, column)
   if not v or stringy.strip(v) == "" then
